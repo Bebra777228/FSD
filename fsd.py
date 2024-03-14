@@ -190,34 +190,34 @@ css = """
 with gr.Blocks(css=css) as demo:
     with gr.Row():
         with gr.Column(scale=6):
-            model = gr.Dropdown(interactive=True,value="absolutereality_v181.safetensors [3d9d4d2b]", show_label=True, label="Stable Diffusion Checkpoint", choices=prodia_client.list_models())
+            model = gr.Dropdown(interactive=True,value="absolutereality_v181.safetensors [3d9d4d2b]", show_label=True, label="Stable Diffusion Модели:", choices=prodia_client.list_models())
   
 
     with gr.Tabs() as tabs:
         with gr.Tab("txt2img", id='t2i'):
             with gr.Row():
                 with gr.Column(scale=6, min_width=600):
-                    prompt = gr.Textbox("space warrior, beautiful, female, ultrarealistic, soft lighting, 8k", placeholder="Prompt", show_label=False, lines=3)
-                    negative_prompt = gr.Textbox(placeholder="Negative Prompt", show_label=False, lines=3, value="3d, cartoon, anime, (deformed eyes, nose, ears, nose), bad anatomy, ugly")
+                    prompt = gr.Textbox("space warrior, beautiful, female, ultrarealistic, soft lighting, 8k", placeholder="Ваш запрос (промт)", show_label=False, lines=3)
+                    negative_prompt = gr.Textbox(placeholder="Негативный промт", show_label=False, lines=3, value="3d, cartoon, anime, (deformed eyes, nose, ears, nose), bad anatomy, ugly")
                 with gr.Column():
-                    text_button = gr.Button("Generate", variant='primary', elem_id="generate")
+                    text_button = gr.Button("Генерировать", variant='primary', elem_id="generate")
                     
             with gr.Row():
                 with gr.Column(scale=3):
-                    with gr.Tab("Generation"):
+                    with gr.Tab("Настройки"):
                         with gr.Row():
                             with gr.Column(scale=1):
-                                sampler = gr.Dropdown(value="DPM++ 2M Karras", show_label=True, label="Sampling Method", choices=prodia_client.list_samplers())
+                                sampler = gr.Dropdown(value="DPM++ 2M Karras", show_label=True, label="Методы", choices=prodia_client.list_samplers())
                                 
                             with gr.Column(scale=1):
-                                steps = gr.Slider(label="Sampling Steps", minimum=1, maximum=100, value=25, step=1)
+                                steps = gr.Slider(label="Шаги", minimum=1, maximum=100, value=25, step=1)
     
                         with gr.Row():
                             with gr.Column(scale=1):
-                                width = gr.Slider(label="Width", minimum=128, maximum=1024, value=512, step=8)
-                                height = gr.Slider(label="Height", minimum=128, maximum=1024, value=512, step=8)
+                                width = gr.Slider(label="Ширина", minimum=128, maximum=1024, value=512, step=8)
+                                height = gr.Slider(label="Высота", minimum=128, maximum=1024, value=512, step=8)
     
-                        cfg_scale = gr.Slider(label="CFG Scale", minimum=1, maximum=30, value=7, step=1)
+                        cfg_scale = gr.Slider(label="Масштаб CFG", minimum=1, maximum=30, value=7, step=1)
                         seed = gr.Number(label="Seed", value=-1)
     
                     
@@ -227,7 +227,7 @@ with gr.Blocks(css=css) as demo:
             text_button.click(txt2img, inputs=[prompt, negative_prompt, model, steps, sampler, cfg_scale, width, height, seed], outputs=image_output)
         
         
-        with gr.Tab("PNG Info"):
+        with gr.Tab("Информация о PNG"):
             def plaintext_to_html(text, classname=None):
                 content = "<br>\n".join(html.escape(x) for x in text.split('\n'))
     
@@ -247,7 +247,7 @@ with gr.Blocks(css=css) as demo:
                     """.strip()+"\n"
     
                 if len(info) == 0:
-                    message = "Nothing found in the image."
+                    message = "На изображении ничего не найдено."
                     info = f"<div><p>{message}<p></div>"
     
                 return info
@@ -257,8 +257,8 @@ with gr.Blocks(css=css) as demo:
                     image_input = gr.Image(type="pil")
                     
                 with gr.Column():
-                    exif_output = gr.HTML(label="EXIF Data")
-                    send_to_txt2img_btn = gr.Button("Send to txt2img")
+                    exif_output = gr.HTML(label="Данные EXIF")
+                    send_to_txt2img_btn = gr.Button("Отправить в txt2img")
     
             image_input.upload(get_exif_data, inputs=[image_input], outputs=exif_output)
             send_to_txt2img_btn.click(send_to_txt2img, inputs=[image_input], outputs=[tabs, prompt, negative_prompt, steps, seed,
