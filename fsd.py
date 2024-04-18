@@ -278,7 +278,7 @@ with gr.Blocks(css=css) as demo:
         with gr.Tab("Добро пожаловать"):
             gr.HTML("""
             <div style="padding: 20px;">
-                <h1 style="text-align: center;">🎨 Веб-интерфейс Stable Diffusion от Politrees</h1>
+                <h1 style="text-align: center;">🎨 Веб-интерфейс Fast Stable Diffusion от Politrees</h1>
                 <p style="text-align: center;">Создавайте и манипулируйте изображениями с помощью стабильных диффузионных моделей!</p>
 
                 <hr style="margin: 20px 0;">
