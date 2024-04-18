@@ -287,7 +287,7 @@ with gr.Blocks(css=css) as demo:
                     <div style="flex: 1; margin-bottom: 10px;">
                         <h2 style="text-align: center;">Fast Stable Diffusion</h2>
                         <img src="https://example.com/fast_stable_diffusion.png" alt="Fast Stable Diffusion" width="100%">
-                        <p style="text-align: center;">Генерируй изображения из текстовых описаний с помощью стабильных диффузионных моделей. Вы можете указать текстовое описание, параметры генерации и получить изображение, соответствующее вашему запросу.</p>
+                        <p style="text-align: center;">Генерируйте изображения из текстовых описаний с помощью стабильных диффузионных моделей. Вы можете указать текстовое описание, параметры генерации и получить изображение, соответствующее вашему запросу.</p>
                     </div>
                     <div style="flex: 1; margin-bottom: 10px;">
                         <h2 style="text-align: center;">Fast Stable Diffusion XL</h2>
@@ -302,7 +302,7 @@ with gr.Blocks(css=css) as demo:
                     <div style="flex: 1; margin-bottom: 10px;">
                         <h2 style="text-align: center;">Информация о сгенерированном изображении</h2>
                         <img src="https://example.com/png_info.png" alt="PNG Info" width="100%">
-                        <p style="text-align: center;">Извлекайте данные EXIF из изображений PNG и отправлять изображение на вкладку txt2img для дальнейшей манипуляции. Вы можете загрузить изображение, просмотреть его данные EXIF и отправить его на вкладку txt2img для дальнейшей обработки.</p>
+                        <p style="text-align: center;">Извлекайте данные EXIF из изображений PNG и отправляйте изображение на вкладку txt2img для дальнейшей манипуляции. Вы можете загрузить изображение, просмотреть его данные EXIF и отправить его на вкладку txt2img для дальнейшей обработки.</p>
                     </div>
                 </div>
 
