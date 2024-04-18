@@ -279,35 +279,40 @@ with gr.Blocks(css=css) as demo:
             gr.HTML("""
             <div style="padding: 20px;">
                 <h1 style="text-align: center;">🎨 Веб-интерфейс Fast Stable Diffusion от Politrees</h1>
-                <p style="text-align: center;">Создавайте изображения с помощью стабильных диффузионных моделей!</p>
+                <p style="text-align: center; font-weight: bold;">Создавайте изображения с помощью стабильных диффузионных моделей!</p>
 
                 <hr style="margin: 20px 0;">
 
                 <div style="display: flex; flex-wrap: wrap; justify-content: space-between;">
                     <div style="flex: 1; margin-bottom: 10px;">
                         <h2 style="text-align: center;">Fast Stable Diffusion</h2>
-                        <img src="https://github.com/Bebra777228/FSD/blob/main/content/Will_Smith_fsd.png" alt="Fast Stable Diffusion" width="100%">
-                        <p style="text-align: center;">Не алмаз, а золото. Лучший вариант для генерации изображений.</p>
+                        <img src="https://raw.githubusercontent.com/Bebra777228/FSD/main/content/Will_Smith_fsd.webp" alt="Fast Stable Diffusion" width="100%">
+                        <p style="text-align: center; font-weight: bold;">Не алмаз, а золото. Лучший вариант для генерации изображений!</p>
                     </div>
                     <div style="flex: 1; margin-bottom: 10px;">
                         <h2 style="text-align: center;">Fast Stable Diffusion XL</h2>
-                        <img src="https://github.com/Bebra777228/FSD/blob/main/content/Will_Smith_fsdXL.png" alt="Fast Stable Diffusion XL" width="100%">
-                        <p style="text-align: center;">То ли гений, то ли псих. Автор нейронки наверное был под ЛСД когда ее делал.</p>
+                        <img src="https://raw.githubusercontent.com/Bebra777228/FSD/main/content/Will_Smith_fsdXL.webp" alt="Fast Stable Diffusion XL" width="100%">
+                        <p style="text-align: center; font-weight: bold;">То ли гений, то ли псих. Автор нейронки наверное был под ЛСД когда ее делал.</p>
                     </div>
                     <div style="flex: 1; margin-bottom: 10px;">
                         <h2 style="text-align: center;">Улучшение изображений</h2>
-                        <img src="https://github.com/Bebra777228/FSD/blob/main/content/Real-ESRGAN.png" width="100%">
-                        <p style="text-align: center;">Сохраняйте свое зрение и улучшайте качество ваших изображений с помощью RealESRGAN.</p>
+                        <img src="https://raw.githubusercontent.com/Bebra777228/FSD/main/content/Real-ESRGAN.webp" width="100%">
+                        <p style="text-align: center; font-weight: bold;">Сохраните свое зрение. Улучшайте качество ваших изображений с помощью RealESRGAN.</p>
                     </div>
                     <div style="flex: 1; margin-bottom: 10px;">
                         <h2 style="text-align: center;">Информация о сгенерированном изображении</h2>
-                        <p style="text-align: center;">Станьте архиватором и извлеките данные из сгенерированных изображений для повторной генерации.</p>
+                        <p style="text-align: center; font-weight: bold;">Извлекайте данные из сгенерированных ранее изображений и используйте их для создания новых, уникальных изображений.</p>
                     </div>
                 </div>
 
                 <hr style="margin: 20px 0;">
 
-                <p style="text-align: center;">Экспериментируйте и создавайте!</p>
+                <p style="text-align: center; font-weight: bold;">Творите с душой!</p>
+
+                <hr style="margin: 20px 0;">
+
+                <img src="https://raw.githubusercontent.com/Bebra777228/FSD/main/content/landscape.webp" width="100%">
+
             </div>
             """)
 
