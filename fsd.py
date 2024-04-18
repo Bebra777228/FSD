@@ -286,23 +286,22 @@ with gr.Blocks(css=css) as demo:
                 <div style="display: flex; flex-wrap: wrap; justify-content: space-between;">
                     <div style="flex: 1; margin-bottom: 10px;">
                         <h2 style="text-align: center;">Fast Stable Diffusion</h2>
-                        <img src="https://example.com/fast_stable_diffusion.png" alt="Fast Stable Diffusion" width="100%">
+                        <img src="https://github.com/Bebra777228/FSD/blob/main/content/Will_Smith_fsd.png" alt="Fast Stable Diffusion" width="100%">
                         <p style="text-align: center;">Не алмаз, а золото. Лучший вариант для генерации изображений.</p>
                     </div>
                     <div style="flex: 1; margin-bottom: 10px;">
                         <h2 style="text-align: center;">Fast Stable Diffusion XL</h2>
-                        <img src="https://example.com/fast_stable_diffusion_xl.png" alt="Fast Stable Diffusion XL" width="100%">
+                        <img src="https://github.com/Bebra777228/FSD/blob/main/content/Will_Smith_fsdXL.png" alt="Fast Stable Diffusion XL" width="100%">
                         <p style="text-align: center;">То ли гений, то ли псих. Автор нейронки наверное был под ЛСД когда ее делал.</p>
                     </div>
                     <div style="flex: 1; margin-bottom: 10px;">
                         <h2 style="text-align: center;">Улучшение изображений</h2>
-                        <img src="https://example.com/real_esrgan.png" alt="Real-ESRGAN" width="100%">
-                        <p style="text-align: center;">Улучшайте качество ваших изображений с помощью моделей RealESRGAN.</p>
+                        <img src="https://github.com/Bebra777228/FSD/blob/main/content/Real-ESRGAN.png" width="100%">
+                        <p style="text-align: center;">Сохраняйте свое зрение и улучшайте качество ваших изображений с помощью RealESRGAN.</p>
                     </div>
                     <div style="flex: 1; margin-bottom: 10px;">
                         <h2 style="text-align: center;">Информация о сгенерированном изображении</h2>
-                        <img src="https://example.com/png_info.png" alt="PNG Info" width="100%">
-                        <p style="text-align: center;">Извлекайте данные из изображений для повторной генерации (prompt, negative prompt и др.).</p>
+                        <p style="text-align: center;">Станьте архиватором и извлеките данные из сгенерированных изображений для повторной генерации.</p>
                     </div>
                 </div>
 
@@ -423,7 +422,5 @@ with gr.Blocks(css=css) as demo:
 
 if torch.cuda.is_available():
     torch.cuda.empty_cache()
-
-os.system('clear_output()')
 
 demo.queue(max_size=80, api_open=False).launch(max_threads=256, share=True, show_api=False)
