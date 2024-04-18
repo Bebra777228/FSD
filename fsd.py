@@ -316,8 +316,8 @@ with gr.Blocks(css=css) as demo:
         with gr.Tab("Fast Stable Diffusion", id='t2i'):
             with gr.Row():
                 with gr.Column(scale=6, min_width=600):
-                    prompt = gr.Textbox("space warrior, beautiful, female, ultrarealistic, soft lighting, 8k", placeholder="Напиши тут то что хочешь сгенерировать", show_label=False, lines=3)
-                    negative_prompt = gr.Textbox(placeholder="Напиши тут то что надо убрать из изображения", show_label=False, lines=3, value="3d, cartoon, anime, (deformed eyes, nose, ears, nose), bad anatomy, ugly")
+                    prompt = gr.Textbox("space warrior, beautiful, female, ultrarealistic, soft lighting, 8k", placeholder="Напишите тут то что хочешь сгенерировать", show_label=False, lines=3)
+                    negative_prompt = gr.Textbox(placeholder="Напишите тут то что надо убрать из изображения", show_label=False, lines=3, value="3d, cartoon, anime, (deformed eyes, nose, ears, nose), bad anatomy, ugly")
                 with gr.Column():
                     text_button = gr.Button("Генерировать", variant='primary', elem_id="generate")
 
@@ -348,8 +348,8 @@ with gr.Blocks(css=css) as demo:
         with gr.Tab("Fast Stable Diffusion XL"):
             with gr.Row():
                 with gr.Column(scale=6, min_width=600):
-                    xl_prompt = gr.Textbox("space warrior, beautiful, female, ultrarealistic, soft lighting, 8k", placeholder="Напиши тут то что хочешь сгенерировать.", show_label=False, lines=3)
-                    xl_negative_prompt = gr.Textbox(placeholder="Напиши тут то что надо убрать из изображения", show_label=False, lines=3, value="3d, cartoon, anime, (deformed eyes, nose, ears, nose), bad anatomy, ugly")
+                    xl_prompt = gr.Textbox("space warrior, beautiful, female, ultrarealistic, soft lighting, 8k", placeholder="Напишите тут то что хочешь сгенерировать.", show_label=False, lines=3)
+                    xl_negative_prompt = gr.Textbox(placeholder="Напишите тут то что надо убрать из изображения", show_label=False, lines=3, value="3d, cartoon, anime, (deformed eyes, nose, ears, nose), bad anatomy, ugly")
                 with gr.Column():
                     xl_text_button = gr.Button("Генерировать", variant='primary', elem_id="generate")
 
