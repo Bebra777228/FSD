@@ -424,6 +424,6 @@ with gr.Blocks(css=css) as demo:
 if torch.cuda.is_available():
     torch.cuda.empty_cache()
 
-os.system('clear')
+os.system('clear_output()')
 
 demo.queue(max_size=80, api_open=False).launch(max_threads=256, share=True, show_api=False)
