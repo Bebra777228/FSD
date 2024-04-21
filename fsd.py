@@ -107,8 +107,11 @@ class Prodia:
 
     def wait(self, job):
         job_result = job
-
+        start_wait = time.time()
+        
         while job_result['status'] not in ['succeeded', 'failed']:
+            if int(time.time() - start_wait) > 80:
+                raise Exception(f"Ошибка! Долгая генерация: {job_result['status']}")
             time.sleep(0.25)
             job_result = self.get_job(job['job'])
 
