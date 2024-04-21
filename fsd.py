@@ -133,6 +133,14 @@ class Prodia:
         response = self._get(endpoint)
         return response.json()
 
+    def list_loras(self, model_type='sd'):
+        if model_type not in ['sd', 'sdxl']:
+            raise ValueError("Неверный тип модели. Используйте 'sd' или 'sdxl'.")
+
+        endpoint = f"{self.base}/{model_type}/loras"
+        response = self._get(endpoint)
+        return response.json()
+
     def _post(self, url, params):
         headers = {
             **self.headers,
@@ -217,15 +225,25 @@ def send_to_txt2img(image):
         print(e)
         return result
 
+def place_lora(current_prompt, lora_name):
+    pattern = r"<lora:" + lora_name + r":.*?>"
+
+    if re.search(pattern, current_prompt):
+        yield re.sub(pattern, "", current_prompt)
+    else:
+        yield current_prompt + " <lora:" + lora_name + ":1> "
+
 prodia_client = Prodia(api_key=os.getenv("PRODIA_API_KEY"))
 
 model_list = prodia_client.list_models()
+lora_list = prodia_client.list_loras()
 model_names = {}
 for model_name in model_list:
     name_without_ext = remove_id_and_ext(model_name)
     model_names[name_without_ext] = model_name
 
 model_list_xl = prodia_client.list_models(model_type='sdxl')
+lora_list_xl = prodia_client.list_loras(model_type='sdxl')
 model_names_xl = {}
 for model_name in model_list_xl:
     name_without_ext = remove_id_and_ext(model_name)
@@ -347,6 +365,12 @@ with gr.Blocks(css=css) as demo:
                         cfg_scale = gr.Slider(label="Масштаб CFG", minimum=1, maximum=30, value=7, step=1)
                         seed = gr.Number(label="Seed", value=-1)
 
+                        with gr.Tab("Lora"):
+                            with gr.Row():
+                                for lora in lora_list:
+                                    lora_btn = gr.Button(lora, size="sm")
+                                    lora_btn.click(place_lora, inputs=[prompt, lora_btn], outputs=prompt)
+
                 with gr.Column(scale=2):
                     image_output = gr.Image(value="https://images.prodia.xyz/8ede1a7c-c0ee-4ded-987d-6ffed35fc477.png")
 
@@ -378,6 +402,12 @@ with gr.Blocks(css=css) as demo:
 
                         xl_cfg_scale = gr.Slider(label="Масштаб CFG", minimum=1, maximum=30, value=7, step=1)
                         xl_seed = gr.Number(label="Seed", value=-1)
+
+                        with gr.Tab("Lora"):
+                            with gr.Row():
+                                for lora in lora_list_xl:
+                                    lora_btn = gr.Button(lora, size="sm")
+                                    lora_btn.click(place_lora, inputs=[prompt, lora_btn], outputs=prompt)
 
                 with gr.Column(scale=2):
                     xl_image_output = gr.Image(value="https://cdn-uploads.huggingface.co/production/uploads/noauth/XWJyh9DhMGXrzyRJk7SfP.png")
