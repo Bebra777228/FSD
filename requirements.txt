@@ -1,4 +1,3 @@
-git+https://github.com/doevent/Real-ESRGAN.git
 numpy
 gradio
 requests
