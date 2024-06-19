@@ -12,71 +12,10 @@ import html
 import re
 import torch
 from PIL import Image
-from RealESRGAN import RealESRGAN
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 if torch.cuda.is_available():
     torch.cuda.empty_cache()
-
-model2 = RealESRGAN(device, scale=2)
-model2.load_weights('weights/RealESRGAN_x2.pth', download=True)
-if torch.cuda.device_count() > 1:
-    model2 = torch.nn.DataParallel(model2)
-
-model4 = RealESRGAN(device, scale=4)
-model4.load_weights('weights/RealESRGAN_x4.pth', download=True)
-if torch.cuda.device_count() > 1:
-    model4 = torch.nn.DataParallel(model4)
-
-model8 = RealESRGAN(device, scale=8)
-model8.load_weights('weights/RealESRGAN_x8.pth', download=True)
-if torch.cuda.device_count() > 1:
-    model8 = torch.nn.DataParallel(model8)
-
-def inference(image, size):
-    global model2
-    global model4
-    global model8
-    if image is None:
-        raise gr.Error("Изображение не загружено")
-
-    width, height = image.size
-    if width >= 5000 or height >= 5000:
-        raise gr.Error("Изображение слишком большое.")
-
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-
-    if size == '2x':
-        try:
-            result = model2.predict(image.convert('RGB'))
-        except torch.cuda.OutOfMemoryError as e:
-            print(e)
-            model2 = RealESRGAN(device, scale=2)
-            model2.load_weights('weights/RealESRGAN_x2.pth', download=False)
-            result = model2.predict(image.convert('RGB'))
-    elif size == '4x':
-        try:
-            result = model4.predict(image.convert('RGB'))
-        except torch.cuda.OutOfMemoryError as e:
-            print(e)
-            model4 = RealESRGAN(device, scale=4)
-            model4.load_weights('weights/RealESRGAN_x4.pth', download=False)
-            result = model4.predict(image.convert('RGB'))
-    else:
-        try:
-            result = model8.predict(image.convert('RGB'))
-        except torch.cuda.OutOfMemoryError as e:
-            print(e)
-            model8 = RealESRGAN(device, scale=8)
-            model8.load_weights('weights/RealESRGAN_x8.pth', download=False)
-            result = model8.predict(image.convert('RGB'))
-
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-
-    print(f"Размер изображения ({device}): {size} ... OK")
-    return result
 
 class Prodia:
     def __init__(self, api_key, base=None):
@@ -93,12 +32,20 @@ class Prodia:
         response = self._post(endpoint, params)
         return response.json()
 
-    def transform(self, params):
-        response = self._post(f"{self.base}/sd/transform", params)
+    def transform(self, params, model_type='sd'):
+        if model_type not in ['sd', 'sdxl']:
+            raise ValueError("Неверный тип модели. Используйте 'sd' или 'sdxl'.")
+
+        endpoint = f"{self.base}/{model_type}/transform"
+        response = self._post(endpoint, params)
         return response.json()
 
     def controlnet(self, params):
         response = self._post(f"{self.base}/sd/controlnet", params)
+        return response.json()
+
+    def upscale(self, params):
+        response = self._post(f"{self.base}/sd/upscale", params)
         return response.json()
 
     def get_job(self, job_id):
@@ -179,16 +126,17 @@ def remove_id_and_ext(text):
 def get_data(text):
     results = {}
     patterns = {
-        'prompt': r'(.*)',
+        'prompt': r'Prompt: (.*)',
         'negative_prompt': r'Negative prompt: (.*)',
         'steps': r'Steps: (\d+),',
         'seed': r'Seed: (\d+),',
         'sampler': r'Sampler:\s*([^\s,]+(?:\s+[^\s,]+)*)',
         'model': r'Model:\s*([^\s,]+)',
         'cfg_scale': r'CFG scale:\s*([\d\.]+)',
-        'size': r'Size:\s*([0-9]+x[0-9]+)'
+        'size': r'Size:\s*([0-9]+x[0-9]+)',
+        'upscale': r'Upscale:\s*(.*)'
     }
-    for key in ['prompt', 'negative_prompt', 'steps', 'seed', 'sampler', 'model', 'cfg_scale', 'size']:
+    for key in ['prompt', 'negative_prompt', 'steps', 'seed', 'sampler', 'model', 'cfg_scale', 'size', 'upscale']:
         match = re.search(patterns[key], text)
         if match:
             results[key] = match.group(1)
@@ -208,7 +156,7 @@ def send_to_txt2img(image):
     try:
         text = image.info['parameters']
         data = get_data(text)
-        result[prompt] = gr.update(value=data['prompt'])
+        result[prompt] = gr.update(value=data['prompt']) if data['prompt'] is not None else gr.update()
         result[negative_prompt] = gr.update(value=data['negative_prompt']) if data['negative_prompt'] is not None else gr.update()
         result[steps] = gr.update(value=int(data['steps'])) if data['steps'] is not None else gr.update()
         result[seed] = gr.update(value=int(data['seed'])) if data['seed'] is not None else gr.update()
@@ -216,6 +164,7 @@ def send_to_txt2img(image):
         result[width] = gr.update(value=int(data['w'])) if data['w'] is not None else gr.update()
         result[height] = gr.update(value=int(data['h'])) if data['h'] is not None else gr.update()
         result[sampler] = gr.update(value=data['sampler']) if data['sampler'] is not None else gr.update()
+        result[upscale] = gr.update(value=data['upscale']) if data['upscale'] is not None else gr.update()
         if model in model_names:
             result[model] = gr.update(value=model_names[model])
         else:
@@ -249,7 +198,7 @@ for model_name in model_list_xl:
     name_without_ext = remove_id_and_ext(model_name)
     model_names_xl[name_without_ext] = model_name
 
-def txt2img(prompt, negative_prompt, model, steps, sampler, cfg_scale, width, height, seed):
+def txt2img(prompt, negative_prompt, model, steps, sampler, cfg_scale, width, height, seed, upscale):
     result = prodia_client.generate({
         "prompt": prompt,
         "negative_prompt": negative_prompt,
@@ -259,7 +208,8 @@ def txt2img(prompt, negative_prompt, model, steps, sampler, cfg_scale, width, he
         "cfg_scale": cfg_scale,
         "width": width,
         "height": height,
-        "seed": seed
+        "seed": seed,
+        "upscale": upscale
     })
 
     job = prodia_client.wait(result)
@@ -276,7 +226,7 @@ def flip_text(prompt, negative_prompt, model, steps, sampler, cfg_scale, width, 
         "cfg_scale": cfg_scale,
         "width": width,
         "height": height,
-        "seed": seed
+        "seed": seed,
     }, model_type='sdxl')
 
     job = prodia_client.wait(result)
@@ -296,7 +246,7 @@ css = """
 
 with gr.Blocks(css=css) as demo:
     with gr.Tabs() as tabs:
-        with gr.Tab("Велком"):
+        with gr.Tab("Welcome"):
             gr.HTML("""
             <div style="padding: 20px;">
                 <h1 style="text-align: center;">🎨 Веб-интерфейс Fast Stable Diffusion от Politrees</h1>
@@ -316,12 +266,7 @@ with gr.Blocks(css=css) as demo:
                         <p style="text-align: center; font-weight: bold;">То ли гений, то ли псих. Автор нейронки наверное был под ЛСД когда ее делал.</p>
                     </div>
                     <div style="flex: 1; margin-bottom: 10px;">
-                        <h2 style="text-align: center;">Улучшение изображений</h2>
-                        <img src="https://raw.githubusercontent.com/Bebra777228/FSD/main/content/Real-ESRGAN.webp" width="100%">
-                        <p style="text-align: center; font-weight: bold;">Сохраните свое зрение. Улучшайте качество ваших изображений с помощью RealESRGAN.</p>
-                    </div>
-                    <div style="flex: 1; margin-bottom: 10px;">
-                        <h2 style="text-align: center;">Информация о сгенерированном изображении</h2>
+                        <h2 style="text-align: center;">Image Info</h2>
                         <p style="text-align: center; font-weight: bold;">Извлекайте данные из сгенерированных ранее изображений и используйте их для создания новых, уникальных изображений.</p>
                     </div>
                 </div>
@@ -340,92 +285,86 @@ with gr.Blocks(css=css) as demo:
 
         with gr.Tab("Fast Stable Diffusion", id='t2i'):
             with gr.Row():
-                with gr.Column(scale=6, min_width=600):
-                    prompt = gr.Textbox("space warrior, beautiful, female, ultrarealistic, soft lighting, 8k", placeholder="Напишите тут то что хочешь сгенерировать", show_label=False, lines=3)
-                    negative_prompt = gr.Textbox(placeholder="Напишите тут то что надо убрать из изображения", show_label=False, lines=3, value="3d, cartoon, anime, (deformed eyes, nose, ears, nose), bad anatomy, ugly")
-                with gr.Column():
-                    text_button = gr.Button("Генерировать", variant='primary', elem_id="generate")
+                with gr.Column(scale=6):
+                        model = gr.Dropdown(interactive=True, value="absolutereality_v181.safetensors [3d9d4d2b]", show_label=True, label="Models:", choices=model_list)
 
             with gr.Row():
-                with gr.Column(scale=3):
-                        model = gr.Dropdown(interactive=True, value="absolutereality_v181.safetensors [3d9d4d2b]", show_label=True, label="Модели:", choices=model_list)
+                with gr.Column(scale=6, min_width=600):
+                    prompt = gr.Textbox("space warrior, beautiful, female, ultrarealistic, soft lighting, 8k", placeholder="Prompt", show_label=False, lines=3)
+                    negative_prompt = gr.Textbox(placeholder="Negative Prompt", show_label=False, lines=3, value="3d, cartoon, anime, (deformed eyes, nose, ears, nose), bad anatomy, ugly")
+                with gr.Column():
+                    text_button = gr.Button("Generate", variant='primary', elem_id="generate")
+
+            with gr.Row():
+                with gr.Column(scale=2):
+                    with gr.Tab("Generation"):
+                        with gr.Row():
+                            with gr.Column(scale=1):
+                                sampler = gr.Dropdown(value="DPM++ 2M Karras", show_label=True, label="Sampling Method", choices=prodia_client.list_samplers())
+                            with gr.Column(scale=1):
+                                steps = gr.Slider(label="Sampling Steps", minimum=1, maximum=100, value=25, step=1)
 
                         with gr.Row():
                             with gr.Column(scale=1):
-                                sampler = gr.Dropdown(value="DPM++ 2M Karras", show_label=True, label="Метод генерации:", choices=prodia_client.list_samplers())
+                                width = gr.Slider(label="Width", minimum=8, maximum=1024, value=512, step=8)
+                                height = gr.Slider(label="Height", minimum=8, maximum=1024, value=512, step=8)
+                                upscale = gr.Checkbox(label="Up-Scale Image x2", scale=1)
 
-                            with gr.Column(scale=1):
-                                steps = gr.Slider(label="Количество шагов генерации", minimum=1, maximum=100, value=20, step=1)
-
-                        with gr.Row():
-                            with gr.Column(scale=1):
-                                width = gr.Slider(label="Ширина изображения", minimum=128, maximum=1024, value=512, step=8)
-                                height = gr.Slider(label="Высота изображения", minimum=128, maximum=1024, value=512, step=8)
-
-                        cfg_scale = gr.Slider(label="Масштаб CFG", minimum=1, maximum=30, value=7, step=1)
+                        cfg_scale = gr.Slider(label="CFG Scale", minimum=1, maximum=30, value=7, step=1)
                         seed = gr.Number(label="Seed", value=-1)
 
-                        with gr.Tab("Lora"):
-                            with gr.Row():
-                                for lora in lora_list:
-                                    lora_btn = gr.Button(lora, size="sm")
-                                    lora_btn.click(place_lora, inputs=[prompt, lora_btn], outputs=prompt)
+                    with gr.Tab("Lora"):
+                        with gr.Row():
+                            for lora in lora_list:
+                                lora_btn = gr.Button(lora, size="sm")
+                                lora_btn.click(place_lora, inputs=[prompt, lora_btn], outputs=prompt)
 
                 with gr.Column(scale=2):
                     image_output = gr.Image(value="https://images.prodia.xyz/8ede1a7c-c0ee-4ded-987d-6ffed35fc477.png")
 
-            text_button.click(txt2img, inputs=[prompt, negative_prompt, model, steps, sampler, cfg_scale, width, height, seed], outputs=image_output, concurrency_limit=64)
+            text_button.click(txt2img, inputs=[prompt, negative_prompt, model, steps, sampler, cfg_scale, width, height, seed, upscale], outputs=image_output, concurrency_limit=64)
 
         with gr.Tab("Fast Stable Diffusion XL"):
             with gr.Row():
-                with gr.Column(scale=6, min_width=600):
-                    xl_prompt = gr.Textbox("space warrior, beautiful, female, ultrarealistic, soft lighting, 8k", placeholder="Напишите тут то что хочешь сгенерировать.", show_label=False, lines=3)
-                    xl_negative_prompt = gr.Textbox(placeholder="Напишите тут то что надо убрать из изображения", show_label=False, lines=3, value="3d, cartoon, anime, (deformed eyes, nose, ears, nose), bad anatomy, ugly")
-                with gr.Column():
-                    xl_text_button = gr.Button("Генерировать", variant='primary', elem_id="generate")
+                with gr.Column(scale=3):
+                        xl_model = gr.Dropdown(interactive=True, value="sd_xl_base_1.0.safetensors [be9edd61]", show_label=True, label="Models:", choices=model_list_xl)
 
             with gr.Row():
-                with gr.Column(scale=3):
-                        xl_model = gr.Dropdown(interactive=True, value="sd_xl_base_1.0.safetensors [be9edd61]", show_label=True, label="Модели:", choices=model_list_xl)
+                with gr.Column(scale=6, min_width=600):
+                    xl_prompt = gr.Textbox("space warrior, beautiful, female, ultrarealistic, soft lighting, 8k", placeholder="Prompt", show_label=False, lines=3)
+                    xl_negative_prompt = gr.Textbox(placeholder="Negative Prompt", show_label=False, lines=3, value="3d, cartoon, anime, (deformed eyes, nose, ears, nose), bad anatomy, ugly")
+                with gr.Column():
+                    xl_text_button = gr.Button("Generate", variant='primary', elem_id="generate")
+
+            with gr.Row():
+                with gr.Column(scale=2):
+                    with gr.Tab("Generation"):
+                        with gr.Row():
+                            with gr.Column(scale=1):
+                                xl_sampler = gr.Dropdown(value="DPM++ 2M Karras", show_label=True, label="Sampling Method", choices=prodia_client.list_samplers())
+                            with gr.Column(scale=1):
+                                xl_steps = gr.Slider(label="Sampling Steps", minimum=1, maximum=100, value=25, step=1)
 
                         with gr.Row():
                             with gr.Column(scale=1):
-                                xl_sampler = gr.Dropdown(value="DPM++ 2M Karras", show_label=True, label="Метод генерации:", choices=prodia_client.list_samplers(model_type='sdxl'))
+                                xl_width = gr.Slider(label="Width", minimum=8, maximum=1024, value=512, step=8)
+                                xl_height = gr.Slider(label="Height", minimum=8, maximum=1024, value=512, step=8)
 
-                            with gr.Column(scale=1):
-                                xl_steps = gr.Slider(label="Количество шагов генерации", minimum=1, maximum=100, value=20, step=1)
-
-                        with gr.Row():
-                            with gr.Column(scale=1):
-                                xl_width = gr.Slider(label="Ширина изображения", minimum=128, maximum=1024, value=512, step=8)
-                                xl_height = gr.Slider(label="Высота изображения", minimum=128, maximum=1024, value=512, step=8)
-
-                        xl_cfg_scale = gr.Slider(label="Масштаб CFG", minimum=1, maximum=30, value=7, step=1)
+                        xl_cfg_scale = gr.Slider(label="CFG Scale", minimum=1, maximum=30, value=7, step=1)
                         xl_seed = gr.Number(label="Seed", value=-1)
 
-                        with gr.Tab("Lora"):
-                            with gr.Row():
-                                for lora in lora_list_xl:
-                                    lora_btn = gr.Button(lora, size="sm")
-                                    lora_btn.click(place_lora, inputs=[prompt, lora_btn], outputs=prompt)
+                    with gr.Tab("Lora"):
+                        with gr.Row():
+                            for lora in lora_list_xl:
+                                lora_btn = gr.Button(lora, size="sm")
+                                lora_btn.click(place_lora, inputs=[prompt, lora_btn], outputs=prompt)
 
                 with gr.Column(scale=2):
                     xl_image_output = gr.Image(value="https://cdn-uploads.huggingface.co/production/uploads/noauth/XWJyh9DhMGXrzyRJk7SfP.png")
 
             xl_text_button.click(flip_text, inputs=[xl_prompt, xl_negative_prompt, xl_model, xl_steps, xl_sampler, xl_cfg_scale, xl_width, xl_height, xl_seed], outputs=xl_image_output)
 
-        with gr.Tab("Улучшение изображений"):
-            with gr.Row():
-                with gr.Column():
-                    image_input = gr.Image(type="pil")
-
-                with gr.Column():
-                    improved_image_output = gr.Image(type="pil")
-                    improve_image_btn = gr.Button("Улучшить изображение")
-
-            improve_image_btn.click(inference, inputs=[image_input, gr.Radio(['2x', '4x', '8x'], type="value", value='2x', label='Увеличение разрешения изображения')], outputs=improved_image_output)
-
-        with gr.Tab("Информация о сгенерированном изображении"):
+        with gr.Tab("Image Info"):
             def plaintext_to_html(text, classname=None):
                 content = "<br>\n".join(html.escape(x) for x in text.split('\n'))
                 return f"<p class='{classname}'>{content}</p>" if classname else f"<p>{content}</p>"
@@ -442,7 +381,7 @@ with gr.Blocks(css=css) as demo:
                     """.strip()+"\n"
 
                 if len(info) == 0:
-                    message = "Ничего не найдено в изображении."
+                    message = "Nothing found in the image."
                     info = f"<div><p>{message}<p></div>"
 
                 return info
@@ -453,10 +392,8 @@ with gr.Blocks(css=css) as demo:
 
                 with gr.Column():
                     exif_output = gr.HTML(label="EXIF Data")
-                    send_to_txt2img_btn = gr.Button("Показать информацию")
 
             image_input.upload(get_exif_data, inputs=[image_input], outputs=exif_output)
-            send_to_txt2img_btn.click(send_to_txt2img, inputs=[image_input], outputs=[tabs, prompt, negative_prompt, steps, seed, model, sampler, width, height, cfg_scale], concurrency_limit=64)
 
 if torch.cuda.is_available():
     torch.cuda.empty_cache()
