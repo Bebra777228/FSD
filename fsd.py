@@ -244,7 +244,16 @@ css = """
 }
 """
 
-with gr.Blocks(css=css) as demo:
+with gr.Blocks(
+  css=css,
+  theme=gr.themes.Soft(
+    primary_hue="green",
+    secondary_hue="green",
+    neutral_hue="neutral",
+    spacing_size="sm",
+    radius_size="lg",
+    ),
+) as demo:
     with gr.Tabs() as tabs:
         with gr.Tab("Welcome"):
             gr.HTML("""
@@ -398,4 +407,4 @@ with gr.Blocks(css=css) as demo:
 if torch.cuda.is_available():
     torch.cuda.empty_cache()
 
-demo.queue(max_size=80, api_open=False).launch(max_threads=256, share=True, show_api=False)
+demo.launch(share=True, show_api=False)
