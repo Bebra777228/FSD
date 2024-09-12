@@ -1,5 +1,5 @@
 numpy
-gradio==4.29.0
+gradio
 requests
 pillow
 pyexif
