@@ -32,18 +32,6 @@ class Prodia:
         response = self._post(endpoint, params)
         return response.json()
 
-    def transform(self, params, model_type='sd'):
-        if model_type not in ['sd', 'sdxl']:
-            raise ValueError("Неверный тип модели. Используйте 'sd' или 'sdxl'.")
-
-        endpoint = f"{self.base}/{model_type}/transform"
-        response = self._post(endpoint, params)
-        return response.json()
-
-    def controlnet(self, params):
-        response = self._post(f"{self.base}/sd/controlnet", params)
-        return response.json()
-
     def upscale(self, params):
         response = self._post(f"{self.base}/sd/upscale", params)
         return response.json()
@@ -108,12 +96,6 @@ class Prodia:
 
         return response
 
-def image_to_base64(image):
-    buffered = BytesIO()
-    image.save(buffered, format="PNG")
-    img_str = base64.b64encode(buffered.getvalue())
-    return img_str.decode('utf-8')
-
 def remove_id_and_ext(text):
     text = re.sub(r'\[.*\]$', '', text)
     extension = text[-12:].strip()
@@ -122,57 +104,6 @@ def remove_id_and_ext(text):
     elif extension == "ckpt":
         text = text[:-4]
     return text
-
-def get_data(text):
-    results = {}
-    patterns = {
-        'prompt': r'Prompt: (.*)',
-        'negative_prompt': r'Negative prompt: (.*)',
-        'steps': r'Steps: (\d+),',
-        'seed': r'Seed: (\d+),',
-        'sampler': r'Sampler:\s*([^\s,]+(?:\s+[^\s,]+)*)',
-        'model': r'Model:\s*([^\s,]+)',
-        'cfg_scale': r'CFG scale:\s*([\d\.]+)',
-        'size': r'Size:\s*([0-9]+x[0-9]+)',
-        'upscale': r'Upscale:\s*(.*)'
-    }
-    for key in ['prompt', 'negative_prompt', 'steps', 'seed', 'sampler', 'model', 'cfg_scale', 'size', 'upscale']:
-        match = re.search(patterns[key], text)
-        if match:
-            results[key] = match.group(1)
-        else:
-            results[key] = None
-    if results['size'] is not None:
-        w, h = results['size'].split("x")
-        results['w'] = w
-        results['h'] = h
-    else:
-        results['w'] = None
-        results['h'] = None
-    return results
-
-def send_to_txt2img(image):
-    result = {tabs: gr.update(selected="t2i")}
-    try:
-        text = image.info['parameters']
-        data = get_data(text)
-        result[prompt] = gr.update(value=data['prompt']) if data['prompt'] is not None else gr.update()
-        result[negative_prompt] = gr.update(value=data['negative_prompt']) if data['negative_prompt'] is not None else gr.update()
-        result[steps] = gr.update(value=int(data['steps'])) if data['steps'] is not None else gr.update()
-        result[seed] = gr.update(value=int(data['seed'])) if data['seed'] is not None else gr.update()
-        result[cfg_scale] = gr.update(value=float(data['cfg_scale'])) if data['cfg_scale'] is not None else gr.update()
-        result[width] = gr.update(value=int(data['w'])) if data['w'] is not None else gr.update()
-        result[height] = gr.update(value=int(data['h'])) if data['h'] is not None else gr.update()
-        result[sampler] = gr.update(value=data['sampler']) if data['sampler'] is not None else gr.update()
-        result[upscale] = gr.update(value=data['upscale']) if data['upscale'] is not None else gr.update()
-        if model in model_names:
-            result[model] = gr.update(value=model_names[model])
-        else:
-            result[model] = gr.update()
-        return result
-    except Exception as e:
-        print(e)
-        return result
 
 def place_lora(current_prompt, lora_name):
     pattern = r"<lora:" + lora_name + r":.*?>"
@@ -297,12 +228,13 @@ with gr.Blocks(
                 with gr.Column(scale=6):
                         model = gr.Dropdown(interactive=True, value="absolutereality_v181.safetensors [3d9d4d2b]", show_label=True, label="Models:", choices=model_list)
 
-            with gr.Row():
-                with gr.Column(scale=6, min_width=600):
-                    prompt = gr.Textbox("space warrior, beautiful, female, ultrarealistic, soft lighting, 8k", placeholder="Prompt", show_label=False, lines=3)
-                    negative_prompt = gr.Textbox(placeholder="Negative Prompt", show_label=False, lines=3, value="3d, cartoon, anime, (deformed eyes, nose, ears, nose), bad anatomy, ugly")
-                with gr.Column():
-                    text_button = gr.Button("Generate", variant='primary', elem_id="generate")
+            with gr.Group():
+              with gr.Row(equal_height=True):
+                  with gr.Column(scale=6, min_width=600):
+                      prompt = gr.Textbox("space warrior, beautiful, female, ultrarealistic, soft lighting, 8k", placeholder="Prompt", show_label=False, lines=3)
+                      negative_prompt = gr.Textbox(placeholder="Negative Prompt", show_label=False, lines=3, value="3d, cartoon, anime, (deformed eyes, nose, ears, nose), bad anatomy, ugly")
+                  with gr.Column():
+                      text_button = gr.Button("Generate", variant='primary', elem_id="generate")
 
             with gr.Row():
                 with gr.Column(scale=2):
@@ -338,12 +270,13 @@ with gr.Blocks(
                 with gr.Column(scale=3):
                         xl_model = gr.Dropdown(interactive=True, value="sd_xl_base_1.0.safetensors [be9edd61]", show_label=True, label="Models:", choices=model_list_xl)
 
-            with gr.Row():
-                with gr.Column(scale=6, min_width=600):
-                    xl_prompt = gr.Textbox("space warrior, beautiful, female, ultrarealistic, soft lighting, 8k", placeholder="Prompt", show_label=False, lines=3)
-                    xl_negative_prompt = gr.Textbox(placeholder="Negative Prompt", show_label=False, lines=3, value="3d, cartoon, anime, (deformed eyes, nose, ears, nose), bad anatomy, ugly")
-                with gr.Column():
-                    xl_text_button = gr.Button("Generate", variant='primary', elem_id="generate")
+            with gr.Group():
+              with gr.Row(equal_height=True):
+                  with gr.Column(scale=6, min_width=600):
+                      xl_prompt = gr.Textbox("space warrior, beautiful, female, ultrarealistic, soft lighting, 8k", placeholder="Prompt", show_label=False, lines=3)
+                      xl_negative_prompt = gr.Textbox(placeholder="Negative Prompt", show_label=False, lines=3, value="3d, cartoon, anime, (deformed eyes, nose, ears, nose), bad anatomy, ugly")
+                  with gr.Column():
+                      xl_text_button = gr.Button("Generate", variant='primary', elem_id="generate")
 
             with gr.Row():
                 with gr.Column(scale=2):
