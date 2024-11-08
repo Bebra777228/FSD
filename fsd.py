@@ -24,12 +24,12 @@ class Prodia:
             "X-Prodia-Key": api_key
         }
 
-    def generate(self, params, model_type='sd'):
-        if model_type not in ['sd', 'sdxl']:
-            raise ValueError("Неверный тип модели. Используйте 'sd' или 'sdxl'.")
+    def generate_sd(self, params):
+        response = self._post(f"{self.base}/sd/generate", params)
+        return response.json()
 
-        endpoint = f"{self.base}/{model_type}/generate"
-        response = self._post(endpoint, params)
+    def generate_xl(self, params):
+        response = self._post(f"{self.base}/sdxl/generate", params)
         return response.json()
 
     def upscale(self, params):
@@ -45,35 +45,35 @@ class Prodia:
         start_wait = time.time()
         
         while job_result['status'] not in ['succeeded', 'failed']:
-            if int(time.time() - start_wait) > 80:
+            if int(time.time() - start_wait) > 100:
                 raise Exception(f"Ошибка! Долгая генерация: {job_result['status']}")
             time.sleep(0.25)
             job_result = self.get_job(job['job'])
 
         return job_result
 
-    def list_models(self, model_type='sd'):
-        if model_type not in ['sd', 'sdxl']:
-            raise ValueError("Неверный тип модели. Используйте 'sd' или 'sdxl'.")
-
-        endpoint = f"{self.base}/{model_type}/models"
-        response = self._get(endpoint)
+    def list_models_sd(self):
+        response = self._get(f"{self.base}/sd/models")
         return response.json()
 
-    def list_samplers(self, model_type='sd'):
-        if model_type not in ['sd', 'sdxl']:
-            raise ValueError("Неверный тип модели. Используйте 'sd' или 'sdxl'.")
-
-        endpoint = f"{self.base}/{model_type}/samplers"
-        response = self._get(endpoint)
+    def list_models_xl(self):
+        response = self._get(f"{self.base}/sdxl/models")
         return response.json()
 
-    def list_loras(self, model_type='sd'):
-        if model_type not in ['sd', 'sdxl']:
-            raise ValueError("Неверный тип модели. Используйте 'sd' или 'sdxl'.")
+    def list_samplers_sd(self):
+        response = self._get(f"{self.base}/sd/samplers")
+        return response.json()
 
-        endpoint = f"{self.base}/{model_type}/loras"
-        response = self._get(endpoint)
+    def list_samplers_xl(self):
+        response = self._get(f"{self.base}/sdxl/samplers")
+        return response.json()
+
+    def list_loras_sd(self):
+        response = self._get(f"{self.base}/sd/loras")
+        return response.json()
+
+    def list_loras_xl(self):
+        response = self._get(f"{self.base}/sdxl/loras")
         return response.json()
 
     def _post(self, url, params):
@@ -84,6 +84,7 @@ class Prodia:
         response = requests.post(url, headers=headers, data=json.dumps(params))
 
         if response.status_code != 200:
+            print(params)
             raise Exception(f"Плохой ответ Prodia: {response.status_code}")
 
         return response
@@ -113,24 +114,25 @@ def place_lora(current_prompt, lora_name):
     else:
         yield current_prompt + " <lora:" + lora_name + ":1> "
 
-prodia_client = Prodia(api_key=os.getenv("PRODIA_API_KEY"))
+prodia_client_sd = Prodia(api_key=os.getenv("PRODIA_API_KEY"))
+prodia_client_xl = Prodia(api_key=os.getenv("PRODIA_API_KEY"))
 
-model_list = prodia_client.list_models()
-lora_list = prodia_client.list_loras()
+model_list_sd = prodia_client_sd.list_models_sd()
+lora_list_sd = prodia_client_sd.list_loras_sd()
 model_names = {}
-for model_name in model_list:
+for model_name in model_list_sd:
     name_without_ext = remove_id_and_ext(model_name)
     model_names[name_without_ext] = model_name
 
-model_list_xl = prodia_client.list_models(model_type='sdxl')
-lora_list_xl = prodia_client.list_loras(model_type='sdxl')
+model_list_xl = prodia_client_xl.list_models_xl()
+lora_list_xl = prodia_client_xl.list_loras_xl()
 model_names_xl = {}
 for model_name in model_list_xl:
     name_without_ext = remove_id_and_ext(model_name)
     model_names_xl[name_without_ext] = model_name
 
-def txt2img(prompt, negative_prompt, model, steps, sampler, cfg_scale, width, height, seed, upscale):
-    result = prodia_client.generate({
+def txt2img_sd(prompt, negative_prompt, model, steps, sampler, cfg_scale, width, height, seed, upscale):
+    result = prodia_client_sd.generate_sd({
         "prompt": prompt,
         "negative_prompt": negative_prompt,
         "model": model,
@@ -143,12 +145,15 @@ def txt2img(prompt, negative_prompt, model, steps, sampler, cfg_scale, width, he
         "upscale": upscale
     })
 
-    job = prodia_client.wait(result)
+    job = prodia_client_sd.wait(result)
+
+    if job['status'] != "succeeded":
+        raise gr.Error("job failed")
 
     return job["imageUrl"]
 
-def flip_text(prompt, negative_prompt, model, steps, sampler, cfg_scale, width, height, seed):
-    result = prodia_client.generate({
+def txt2img_xl(prompt, negative_prompt, model, steps, sampler, cfg_scale, width, height, seed):
+    result = prodia_client_xl.generate_xl({
         "prompt": prompt,
         "negative_prompt": negative_prompt,
         "model": model,
@@ -158,9 +163,12 @@ def flip_text(prompt, negative_prompt, model, steps, sampler, cfg_scale, width, 
         "width": width,
         "height": height,
         "seed": seed,
-    }, model_type='sdxl')
+    })
 
-    job = prodia_client.wait(result)
+    job = prodia_client_xl.wait(result)
+
+    if job['status'] != "succeeded":
+        raise gr.Error("job failed")
 
     return job["imageUrl"]
 
@@ -226,7 +234,7 @@ with gr.Blocks(
         with gr.Tab("Fast Stable Diffusion", id='t2i'):
             with gr.Row():
                 with gr.Column(scale=6):
-                        model = gr.Dropdown(interactive=True, value="absolutereality_v181.safetensors [3d9d4d2b]", show_label=True, label="Models:", choices=model_list)
+                        model = gr.Dropdown(interactive=True, value="absolutereality_v181.safetensors [3d9d4d2b]", show_label=True, label="Models:", choices=model_list_sd)
 
             with gr.Group():
               with gr.Row(equal_height=True):
@@ -241,7 +249,7 @@ with gr.Blocks(
                     with gr.Tab("Generation"):
                         with gr.Row():
                             with gr.Column(scale=1):
-                                sampler = gr.Dropdown(value="DPM++ 2M Karras", show_label=True, label="Sampling Method", choices=prodia_client.list_samplers())
+                                sampler = gr.Dropdown(value="DPM++ 2M Karras", show_label=True, label="Sampling Method", choices=prodia_client_sd.list_samplers_sd())
                             with gr.Column(scale=1):
                                 steps = gr.Slider(label="Sampling Steps", minimum=1, maximum=100, value=25, step=1)
 
@@ -256,14 +264,14 @@ with gr.Blocks(
 
                     with gr.Tab("Lora"):
                         with gr.Row():
-                            for lora in lora_list:
+                            for lora in lora_list_sd:
                                 lora_btn = gr.Button(lora, size="sm")
                                 lora_btn.click(place_lora, inputs=[prompt, lora_btn], outputs=prompt)
 
                 with gr.Column(scale=2):
                     image_output = gr.Image(value="https://images.prodia.xyz/8ede1a7c-c0ee-4ded-987d-6ffed35fc477.png")
 
-            text_button.click(txt2img, inputs=[prompt, negative_prompt, model, steps, sampler, cfg_scale, width, height, seed, upscale], outputs=image_output, concurrency_limit=64)
+            text_button.click(txt2img_sd, inputs=[prompt, negative_prompt, model, steps, sampler, cfg_scale, width, height, seed, upscale], outputs=image_output, concurrency_limit=64)
 
         with gr.Tab("Fast Stable Diffusion XL"):
             with gr.Row():
@@ -283,7 +291,7 @@ with gr.Blocks(
                     with gr.Tab("Generation"):
                         with gr.Row():
                             with gr.Column(scale=1):
-                                xl_sampler = gr.Dropdown(value="DPM++ 2M Karras", show_label=True, label="Sampling Method", choices=prodia_client.list_samplers())
+                                xl_sampler = gr.Dropdown(value="DPM++ 2M Karras", show_label=True, label="Sampling Method", choices=prodia_client_xl.list_samplers_xl())
                             with gr.Column(scale=1):
                                 xl_steps = gr.Slider(label="Sampling Steps", minimum=1, maximum=100, value=25, step=1)
 
@@ -304,7 +312,7 @@ with gr.Blocks(
                 with gr.Column(scale=2):
                     xl_image_output = gr.Image(value="https://cdn-uploads.huggingface.co/production/uploads/noauth/XWJyh9DhMGXrzyRJk7SfP.png")
 
-            xl_text_button.click(flip_text, inputs=[xl_prompt, xl_negative_prompt, xl_model, xl_steps, xl_sampler, xl_cfg_scale, xl_width, xl_height, xl_seed], outputs=xl_image_output)
+            xl_text_button.click(txt2img_xl, inputs=[xl_prompt, xl_negative_prompt, xl_model, xl_steps, xl_sampler, xl_cfg_scale, xl_width, xl_height, xl_seed], outputs=xl_image_output)
 
         with gr.Tab("Image Info"):
             def plaintext_to_html(text, classname=None):
