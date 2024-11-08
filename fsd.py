@@ -172,6 +172,21 @@ def txt2img_xl(prompt, negative_prompt, model, steps, sampler, cfg_scale, width,
 
     return job["imageUrl"]
 
+test_params = {
+    "prompt": "test",
+    "negative_prompt": "",
+    "model": "absolutereality_v181.safetensors [3d9d4d2b]",
+    "steps": 1,
+    "sampler": "DPM++ 2M Karras",
+    "cfg_scale": 7,
+    "width": 64,
+    "height": 64,
+    "seed": -1,
+    "upscale": False
+}
+
+txt2img_sd(**test_params)
+
 css = """
 #generate {
     height: 100%;
