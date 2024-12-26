@@ -1,5 +1,4 @@
-numpy
-gradio
 requests
+gradio
 pillow
-pyexif
+numpy
