@@ -25,25 +25,21 @@ class Prodia:
         }
 
     def generate_sd(self, params):
-        response = self._post(f"{self.base}/sd/generate", params)
-        return response.json()
+        return self._post(f"{self.base}/sd/generate", params).json()
 
     def generate_xl(self, params):
-        response = self._post(f"{self.base}/sdxl/generate", params)
-        return response.json()
+        return self._post(f"{self.base}/sdxl/generate", params).json()
 
     def upscale(self, params):
-        response = self._post(f"{self.base}/sd/upscale", params)
-        return response.json()
+        return self._post(f"{self.base}/sd/upscale", params).json()
 
     def get_job(self, job_id):
-        response = self._get(f"{self.base}/job/{job_id}")
-        return response.json()
+        return self._get(f"{self.base}/job/{job_id}").json()
 
     def wait(self, job):
         job_result = job
         start_wait = time.time()
-        
+
         while job_result['status'] not in ['succeeded', 'failed']:
             if int(time.time() - start_wait) > 100:
                 raise Exception(f"Ошибка! Долгая генерация: {job_result['status']}")
@@ -53,28 +49,22 @@ class Prodia:
         return job_result
 
     def list_models_sd(self):
-        response = self._get(f"{self.base}/sd/models")
-        return response.json()
+        return self._get(f"{self.base}/sd/models").json()
 
     def list_models_xl(self):
-        response = self._get(f"{self.base}/sdxl/models")
-        return response.json()
+        return self._get(f"{self.base}/sdxl/models").json()
 
     def list_samplers_sd(self):
-        response = self._get(f"{self.base}/sd/samplers")
-        return response.json()
+        return self._get(f"{self.base}/sd/samplers").json()
 
     def list_samplers_xl(self):
-        response = self._get(f"{self.base}/sdxl/samplers")
-        return response.json()
+        return self._get(f"{self.base}/sdxl/samplers").json()
 
     def list_loras_sd(self):
-        response = self._get(f"{self.base}/sd/loras")
-        return response.json()
+        return self._get(f"{self.base}/sd/loras").json()
 
     def list_loras_xl(self):
-        response = self._get(f"{self.base}/sdxl/loras")
-        return response.json()
+        return self._get(f"{self.base}/sdxl/loras").json()
 
     def _post(self, url, params):
         headers = {
@@ -98,6 +88,7 @@ class Prodia:
         return response
 
 def remove_id_and_ext(text):
+    """Remove ID and extension from the model name."""
     text = re.sub(r'\[.*\]$', '', text)
     extension = text[-12:].strip()
     if extension == "safetensors":
@@ -107,31 +98,16 @@ def remove_id_and_ext(text):
     return text
 
 def place_lora(current_prompt, lora_name):
+    """Place LoRA in the prompt."""
     pattern = r"<lora:" + lora_name + r":.*?>"
 
     if re.search(pattern, current_prompt):
         yield re.sub(pattern, "", current_prompt)
     else:
-        yield current_prompt + " <lora:" + lora_name + ":1> "
-
-prodia_client_sd = Prodia(api_key=os.getenv("PRODIA_API_KEY"))
-prodia_client_xl = Prodia(api_key=os.getenv("PRODIA_API_KEY"))
-
-model_list_sd = prodia_client_sd.list_models_sd()
-lora_list_sd = prodia_client_sd.list_loras_sd()
-model_names = {}
-for model_name in model_list_sd:
-    name_without_ext = remove_id_and_ext(model_name)
-    model_names[name_without_ext] = model_name
-
-model_list_xl = prodia_client_xl.list_models_xl()
-lora_list_xl = prodia_client_xl.list_loras_xl()
-model_names_xl = {}
-for model_name in model_list_xl:
-    name_without_ext = remove_id_and_ext(model_name)
-    model_names_xl[name_without_ext] = model_name
+        yield current_prompt + "<lora:" + lora_name + ":1>"
 
 def txt2img_sd(prompt, negative_prompt, model, steps, sampler, cfg_scale, width, height, seed, upscale):
+    """Generate image using Stable Diffusion."""
     result = prodia_client_sd.generate_sd({
         "prompt": prompt,
         "negative_prompt": negative_prompt,
@@ -153,6 +129,7 @@ def txt2img_sd(prompt, negative_prompt, model, steps, sampler, cfg_scale, width,
     return job["imageUrl"]
 
 def txt2img_xl(prompt, negative_prompt, model, steps, sampler, cfg_scale, width, height, seed):
+    """Generate image using Stable Diffusion XL."""
     result = prodia_client_xl.generate_xl({
         "prompt": prompt,
         "negative_prompt": negative_prompt,
@@ -172,21 +149,60 @@ def txt2img_xl(prompt, negative_prompt, model, steps, sampler, cfg_scale, width,
 
     return job["imageUrl"]
 
+def get_exif_data(image):
+    """Get EXIF data from the image."""
+    items = image.info
+    info = ''
+    for key, text in items.items():
+        info += f"""
+        <div>
+        <p><b>{plaintext_to_html(str(key))}</b></p>
+        <p>{plaintext_to_html(str(text))}</p>
+        </div>
+        """.strip()+"\n"
+
+    if len(info) == 0:
+        message = "Nothing found in the image."
+        info = f"<div><p>{message}<p></div>"
+
+    return info
+
+def plaintext_to_html(text, classname=None):
+    """Convert plaintext to HTML."""
+    content = "<br>\n".join(html.escape(x) for x in text.split('\n'))
+    return f"<p class='{classname}'>{content}</p>" if classname else f"<p>{content}</p>"
+
+# Initialize Prodia clients
+prodia_client_sd = Prodia(api_key=os.getenv("PRODIA_API_KEY"))
+prodia_client_xl = Prodia(api_key=os.getenv("PRODIA_API_KEY"))
+
+# Fetch model and LoRA lists
+model_list_sd = prodia_client_sd.list_models_sd()
+lora_list_sd = prodia_client_sd.list_loras_sd()
+model_names = {remove_id_and_ext(model_name): model_name for model_name in model_list_sd}
+
+model_list_xl = prodia_client_xl.list_models_xl()
+lora_list_xl = prodia_client_xl.list_loras_xl()
+model_names_xl = {remove_id_and_ext(model_name): model_name for model_name in model_list_xl}
+
+# Test parameters
 test_params = {
     "prompt": "test",
     "negative_prompt": "",
     "model": "absolutereality_v181.safetensors [3d9d4d2b]",
     "steps": 1,
     "sampler": "DPM++ 2M Karras",
-    "cfg_scale": 7,
-    "width": 64,
-    "height": 64,
+    "cfg_scale": 1,
+    "width": 8,
+    "height": 8,
     "seed": -1,
     "upscale": False
 }
 
+# Run test
 txt2img_sd(**test_params)
 
+# CSS for Gradio interface
 css = """
 #generate {
     height: 100%;
@@ -198,6 +214,7 @@ css = """
 }
 """
 
+# Gradio interface
 with gr.Blocks(
   css=css,
   theme=gr.themes.Soft(
@@ -209,47 +226,10 @@ with gr.Blocks(
     ),
 ) as demo:
     with gr.Tabs() as tabs:
-        with gr.Tab("Welcome"):
-            gr.HTML("""
-            <div style="padding: 20px;">
-                <h1 style="text-align: center;">🎨 Веб-интерфейс Fast Stable Diffusion от Politrees</h1>
-                <p style="text-align: center; font-weight: bold;">Создавайте изображения с помощью стабильных диффузионных моделей!</p>
-
-                <hr style="margin: 20px 0;">
-
-                <div style="display: flex; flex-wrap: wrap; justify-content: space-between;">
-                    <div style="flex: 1; margin-bottom: 10px;">
-                        <h2 style="text-align: center;">Fast Stable Diffusion</h2>
-                        <img src="https://raw.githubusercontent.com/Bebra777228/FSD/main/content/Will_Smith_fsd.webp" alt="Fast Stable Diffusion" width="100%">
-                        <p style="text-align: center; font-weight: bold;">Не алмаз, а золото. Лучший вариант для генерации изображений!</p>
-                    </div>
-                    <div style="flex: 1; margin-bottom: 10px;">
-                        <h2 style="text-align: center;">Fast Stable Diffusion XL</h2>
-                        <img src="https://raw.githubusercontent.com/Bebra777228/FSD/main/content/Will_Smith_fsdXL.webp" alt="Fast Stable Diffusion XL" width="100%">
-                        <p style="text-align: center; font-weight: bold;">То ли гений, то ли псих. Автор нейронки наверное был под ЛСД когда ее делал.</p>
-                    </div>
-                    <div style="flex: 1; margin-bottom: 10px;">
-                        <h2 style="text-align: center;">Image Info</h2>
-                        <p style="text-align: center; font-weight: bold;">Извлекайте данные из сгенерированных ранее изображений и используйте их для создания новых, уникальных изображений.</p>
-                    </div>
-                </div>
-
-                <hr style="margin: 20px 0;">
-
-                <p style="text-align: center; font-weight: bold;">Творите с душой!</p>
-
-                <hr style="margin: 20px 0;">
-
-                <img src="https://raw.githubusercontent.com/Bebra777228/FSD/main/content/landscape.webp" width="100%">
-
-            </div>
-            """)
-
-
         with gr.Tab("Fast Stable Diffusion", id='t2i'):
             with gr.Row():
                 with gr.Column(scale=6):
-                        model = gr.Dropdown(interactive=True, value="absolutereality_v181.safetensors [3d9d4d2b]", show_label=True, label="Models:", choices=model_list_sd)
+                    model = gr.Dropdown(interactive=True, value="absolutereality_v181.safetensors [3d9d4d2b]", show_label=True, label="Models:", choices=model_list_sd)
 
             with gr.Group():
               with gr.Row(equal_height=True):
@@ -291,7 +271,7 @@ with gr.Blocks(
         with gr.Tab("Fast Stable Diffusion XL"):
             with gr.Row():
                 with gr.Column(scale=3):
-                        xl_model = gr.Dropdown(interactive=True, value="sd_xl_base_1.0.safetensors [be9edd61]", show_label=True, label="Models:", choices=model_list_xl)
+                    xl_model = gr.Dropdown(interactive=True, value="sd_xl_base_1.0.safetensors [be9edd61]", show_label=True, label="Models:", choices=model_list_xl)
 
             with gr.Group():
               with gr.Row(equal_height=True):
@@ -330,27 +310,6 @@ with gr.Blocks(
             xl_text_button.click(txt2img_xl, inputs=[xl_prompt, xl_negative_prompt, xl_model, xl_steps, xl_sampler, xl_cfg_scale, xl_width, xl_height, xl_seed], outputs=xl_image_output)
 
         with gr.Tab("Image Info"):
-            def plaintext_to_html(text, classname=None):
-                content = "<br>\n".join(html.escape(x) for x in text.split('\n'))
-                return f"<p class='{classname}'>{content}</p>" if classname else f"<p>{content}</p>"
-
-            def get_exif_data(image):
-                items = image.info
-                info = ''
-                for key, text in items.items():
-                    info += f"""
-                    <div>
-                    <p><b>{plaintext_to_html(str(key))}</b></p>
-                    <p>{plaintext_to_html(str(text))}</p>
-                    </div>
-                    """.strip()+"\n"
-
-                if len(info) == 0:
-                    message = "Nothing found in the image."
-                    info = f"<div><p>{message}<p></div>"
-
-                return info
-
             with gr.Row():
                 with gr.Column():
                     image_input = gr.Image(type="pil")
