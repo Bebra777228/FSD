@@ -5,6 +5,7 @@ import time
 import json
 import base64
 import os
+import sys
 from io import BytesIO
 import PIL
 from PIL.ExifTags import TAGS
@@ -12,6 +13,8 @@ import html
 import re
 import torch
 from PIL import Image
+
+api_key = sys.argv[1]
 
 # Устанавливаем устройство для вычислений
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -160,7 +163,7 @@ def plaintext_to_html(text, classname=None):
     return f"<p class='{classname}'>{content}</p>" if classname else f"<p>{content}</p>"
 
 # Initialize Prodia clients
-prodia_client = Prodia(api_key=os.getenv("PRODIA_API_KEY"))
+prodia_client = Prodia(api_key)
 
 # Fetch model and LoRA lists
 model_list_sd = prodia_client.list_models_sd()
