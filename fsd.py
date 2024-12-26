@@ -1,33 +1,28 @@
-import numpy as np
-import gradio as gr
-import requests
-import time
-import json
-import base64
-import os
-import sys
-from io import BytesIO
-import PIL
-from PIL.ExifTags import TAGS
 import html
 import re
+import sys
+import time
+
+import gradio as gr
+import numpy as np
+import PIL
+import requests
 import torch
 from PIL import Image
+from PIL.ExifTags import TAGS
 
 api_key = sys.argv[1]
 
 # Устанавливаем устройство для вычислений
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 if torch.cuda.is_available():
     torch.cuda.empty_cache()
+
 
 class Prodia:
     def __init__(self, api_key, base=None):
         self.base = base or "https://api.prodia.com/v1"
-        self.headers = {
-            "X-Prodia-Key": api_key,
-            "Content-Type": "application/json"
-        }
+        self.headers = {"X-Prodia-Key": api_key, "Content-Type": "application/json"}
 
     def _request(self, method, url, params=None):
         response = requests.request(method, url, headers=self.headers, json=params)
@@ -51,11 +46,11 @@ class Prodia:
         job_result = job
         start_wait = time.time()
 
-        while job_result['status'] not in ['succeeded', 'failed']:
+        while job_result["status"] not in ["succeeded", "failed"]:
             if time.time() - start_wait > 100:
                 raise Exception(f"Ошибка! Долгая генерация: {job_result['status']}")
             time.sleep(0.25)
-            job_result = self.get_job(job['job'])
+            job_result = self.get_job(job["job"])
 
         return job_result
 
@@ -77,14 +72,16 @@ class Prodia:
     def list_loras_xl(self):
         return self._request("GET", f"{self.base}/sdxl/loras")
 
+
 def remove_id_and_ext(text):
     """Remove ID and extension from the model name."""
-    text = re.sub(r'\[.*\]$', '', text)
+    text = re.sub(r"\[.*\]$", "", text)
     if text.endswith("safetensors"):
         text = text[:-13]
     elif text.endswith("ckpt"):
         text = text[:-4]
     return text
+
 
 def place_lora(current_prompt, lora_name):
     """Place LoRA in the prompt."""
@@ -94,62 +91,72 @@ def place_lora(current_prompt, lora_name):
     else:
         return current_prompt + f"<lora:{lora_name}:1>"
 
+
 def txt2img_sd(prompt, negative_prompt, model, steps, sampler, cfg_scale, width, height, seed, upscale):
     """Generate image using Stable Diffusion."""
-    result = prodia_client.generate_sd({
-        "prompt": prompt,
-        "negative_prompt": negative_prompt,
-        "model": model,
-        "steps": steps,
-        "sampler": sampler,
-        "cfg_scale": cfg_scale,
-        "width": width,
-        "height": height,
-        "seed": seed,
-        "upscale": upscale
-    })
+    result = prodia_client.generate_sd(
+        {
+            "prompt": prompt,
+            "negative_prompt": negative_prompt,
+            "model": model,
+            "steps": steps,
+            "sampler": sampler,
+            "cfg_scale": cfg_scale,
+            "width": width,
+            "height": height,
+            "seed": seed,
+            "upscale": upscale,
+        }
+    )
 
     job = prodia_client.wait(result)
 
-    if job['status'] != "succeeded":
+    if job["status"] != "succeeded":
         raise gr.Error("job failed")
 
     return job["imageUrl"]
+
 
 def txt2img_xl(prompt, negative_prompt, model, steps, sampler, cfg_scale, width, height, seed):
     """Generate image using Stable Diffusion XL."""
-    result = prodia_client.generate_xl({
-        "prompt": prompt,
-        "negative_prompt": negative_prompt,
-        "model": model,
-        "steps": steps,
-        "sampler": sampler,
-        "cfg_scale": cfg_scale,
-        "width": width,
-        "height": height,
-        "seed": seed,
-    })
+    result = prodia_client.generate_xl(
+        {
+            "prompt": prompt,
+            "negative_prompt": negative_prompt,
+            "model": model,
+            "steps": steps,
+            "sampler": sampler,
+            "cfg_scale": cfg_scale,
+            "width": width,
+            "height": height,
+            "seed": seed,
+        }
+    )
 
     job = prodia_client.wait(result)
 
-    if job['status'] != "succeeded":
+    if job["status"] != "succeeded":
         raise gr.Error("job failed")
 
     return job["imageUrl"]
+
 
 def get_exif_data(image):
     """Get EXIF data from the image."""
     items = image.info
-    info = ''
+    info = ""
     for key, text in items.items():
         info += (
-            f"""
+            (
+                f"""
             <div>
                 <p><b>{plaintext_to_html(str(key))}</b></p>
                 <p>{plaintext_to_html(str(text))}</p>
             </div>
             """
-        ).strip() + "\n"
+            ).strip()
+            + "\n"
+        )
 
     if not info:
         message = "Nothing found in the image."
@@ -157,10 +164,12 @@ def get_exif_data(image):
 
     return info
 
+
 def plaintext_to_html(text, classname=None):
     """Convert plaintext to HTML."""
-    content = "<br>\n".join(html.escape(x) for x in text.split('\n'))
+    content = "<br>\n".join(html.escape(x) for x in text.split("\n"))
     return f"<p class='{classname}'>{content}</p>" if classname else f"<p>{content}</p>"
+
 
 # Initialize Prodia clients
 prodia_client = Prodia(api_key)
@@ -185,7 +194,7 @@ test_params = {
     "width": 8,
     "height": 8,
     "seed": -1,
-    "upscale": False
+    "upscale": False,
 }
 
 # Run test
@@ -204,33 +213,57 @@ css = """
 """
 
 # Gradio interface
-with gr.Blocks(css=css, theme=gr.themes.Soft(
-    primary_hue="green",
-    secondary_hue="green",
-    neutral_hue="neutral",
-    spacing_size="sm",
-    radius_size="lg",
-)) as demo:
+with gr.Blocks(
+    css=css,
+    theme=gr.themes.Soft(
+        primary_hue="green",
+        secondary_hue="green",
+        neutral_hue="neutral",
+        spacing_size="sm",
+        radius_size="lg",
+    ),
+) as demo:
     with gr.Tabs() as tabs:
-        with gr.Tab("Fast Stable Diffusion", id='t2i'):
+        with gr.Tab("Fast Stable Diffusion", id="t2i"):
             with gr.Row():
                 with gr.Column(scale=6):
-                    model = gr.Dropdown(interactive=True, value="absolutereality_v181.safetensors [3d9d4d2b]", show_label=True, label="Models:", choices=model_list_sd)
+                    model = gr.Dropdown(
+                        interactive=True,
+                        value="absolutereality_v181.safetensors [3d9d4d2b]",
+                        show_label=True,
+                        label="Models:",
+                        choices=model_list_sd,
+                    )
 
             with gr.Group():
                 with gr.Row(equal_height=True):
                     with gr.Column(scale=6, min_width=600):
-                        prompt = gr.Textbox("space warrior, beautiful, female, ultrarealistic, soft lighting, 8k", placeholder="Prompt", show_label=False, lines=3)
-                        negative_prompt = gr.Textbox(placeholder="Negative Prompt", show_label=False, lines=3, value="3d, cartoon, anime, (deformed eyes, nose, ears, nose), bad anatomy, ugly")
+                        prompt = gr.Textbox(
+                            "space warrior, beautiful, female, ultrarealistic, soft lighting, 8k",
+                            placeholder="Prompt",
+                            show_label=False,
+                            lines=3,
+                        )
+                        negative_prompt = gr.Textbox(
+                            placeholder="Negative Prompt",
+                            show_label=False,
+                            lines=3,
+                            value="3d, cartoon, anime, (deformed eyes, nose, ears, nose), bad anatomy, ugly",
+                        )
                     with gr.Column():
-                        text_button = gr.Button("Generate", variant='primary', elem_id="generate")
+                        text_button = gr.Button("Generate", variant="primary", elem_id="generate")
 
             with gr.Row():
                 with gr.Column(scale=2):
                     with gr.Tab("Generation"):
                         with gr.Row():
                             with gr.Column(scale=1):
-                                sampler = gr.Dropdown(value="DPM++ 2M Karras", show_label=True, label="Sampling Method", choices=prodia_client.list_samplers_sd())
+                                sampler = gr.Dropdown(
+                                    value="DPM++ 2M Karras",
+                                    show_label=True,
+                                    label="Sampling Method",
+                                    choices=prodia_client.list_samplers_sd(),
+                                )
                             with gr.Column(scale=1):
                                 steps = gr.Slider(label="Sampling Steps", minimum=1, maximum=100, value=25, step=1)
 
@@ -252,27 +285,53 @@ with gr.Blocks(css=css, theme=gr.themes.Soft(
                 with gr.Column(scale=2):
                     image_output = gr.Image(value="https://images.prodia.xyz/8ede1a7c-c0ee-4ded-987d-6ffed35fc477.png")
 
-            text_button.click(txt2img_sd, inputs=[prompt, negative_prompt, model, steps, sampler, cfg_scale, width, height, seed, upscale], outputs=image_output, concurrency_limit=64)
+            text_button.click(
+                txt2img_sd,
+                inputs=[prompt, negative_prompt, model, steps, sampler, cfg_scale, width, height, seed, upscale],
+                outputs=image_output,
+                concurrency_limit=64,
+            )
 
         with gr.Tab("Fast Stable Diffusion XL"):
             with gr.Row():
                 with gr.Column(scale=3):
-                    xl_model = gr.Dropdown(interactive=True, value="sd_xl_base_1.0.safetensors [be9edd61]", show_label=True, label="Models:", choices=model_list_xl)
+                    xl_model = gr.Dropdown(
+                        interactive=True,
+                        value="sd_xl_base_1.0.safetensors [be9edd61]",
+                        show_label=True,
+                        label="Models:",
+                        choices=model_list_xl,
+                    )
 
             with gr.Group():
                 with gr.Row(equal_height=True):
                     with gr.Column(scale=6, min_width=600):
-                        xl_prompt = gr.Textbox("space warrior, beautiful, female, ultrarealistic, soft lighting, 8k", placeholder="Prompt", show_label=False, lines=3)
-                        xl_negative_prompt = gr.Textbox(placeholder="Negative Prompt", show_label=False, lines=3, value="3d, cartoon, anime, (deformed eyes, nose, ears, nose), bad anatomy, ugly")
+                        xl_prompt = gr.Textbox(
+                            "space warrior, beautiful, female, ultrarealistic, soft lighting, 8k",
+                            placeholder="Prompt",
+                            show_label=False,
+                            lines=3,
+                        )
+                        xl_negative_prompt = gr.Textbox(
+                            placeholder="Negative Prompt",
+                            show_label=False,
+                            lines=3,
+                            value="3d, cartoon, anime, (deformed eyes, nose, ears, nose), bad anatomy, ugly",
+                        )
                     with gr.Column():
-                        xl_text_button = gr.Button("Generate", variant='primary', elem_id="generate")
+                        xl_text_button = gr.Button("Generate", variant="primary", elem_id="generate")
 
             with gr.Row():
                 with gr.Column(scale=2):
                     with gr.Tab("Generation"):
                         with gr.Row():
                             with gr.Column(scale=1):
-                                xl_sampler = gr.Dropdown(value="DPM++ 2M Karras", show_label=True, label="Sampling Method", choices=prodia_client.list_samplers_xl())
+                                xl_sampler = gr.Dropdown(
+                                    value="DPM++ 2M Karras",
+                                    show_label=True,
+                                    label="Sampling Method",
+                                    choices=prodia_client.list_samplers_xl(),
+                                )
                             with gr.Column(scale=1):
                                 xl_steps = gr.Slider(label="Sampling Steps", minimum=1, maximum=100, value=25, step=1)
 
@@ -291,9 +350,15 @@ with gr.Blocks(css=css, theme=gr.themes.Soft(
                                 lora_btn.click(place_lora, inputs=[prompt, lora_btn], outputs=prompt)
 
                 with gr.Column(scale=2):
-                    xl_image_output = gr.Image(value="https://cdn-uploads.huggingface.co/production/uploads/noauth/XWJyh9DhMGXrzyRJk7SfP.png")
+                    xl_image_output = gr.Image(
+                        value="https://cdn-uploads.huggingface.co/production/uploads/noauth/XWJyh9DhMGXrzyRJk7SfP.png"
+                    )
 
-            xl_text_button.click(txt2img_xl, inputs=[xl_prompt, xl_negative_prompt, xl_model, xl_steps, xl_sampler, xl_cfg_scale, xl_width, xl_height, xl_seed], outputs=xl_image_output)
+            xl_text_button.click(
+                txt2img_xl,
+                inputs=[xl_prompt, xl_negative_prompt, xl_model, xl_steps, xl_sampler, xl_cfg_scale, xl_width, xl_height, xl_seed],
+                outputs=xl_image_output,
+            )
 
         with gr.Tab("Image Info"):
             with gr.Row():
